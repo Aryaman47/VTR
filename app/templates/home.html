@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>VTR — Home</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; padding: 18px; }
+    .card { border: 1px solid #ddd; padding: 12px; margin-bottom: 12px; border-radius: 6px; box-shadow: 0 1px 0 rgba(0,0,0,0.04); }
+    label { display:block; margin-bottom: 6px; font-weight:600; }
+    input[type="text"] { width: 360px; padding: 8px; }
+    button { padding: 8px 12px; cursor:pointer; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { border:1px solid #eee; padding: 8px; text-align: left; }
+    .muted { color: #666; font-size: 0.9em; }
+    .small { font-size: 0.9em; }
+    .btn-disabled { opacity: 0.6; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <h1>VTR — Vulnerability Tracking & Reporting</h1>
+
+  <div class="card">
+    <h2>Start a Scan</h2>
+    <form id="scanForm" action="{{ url_for('main.home') }}" method="post">
+      <label for="target">Target (IP, CIDR or hostname):</label>
+      <input id="target" name="target" placeholder="127.0.0.1 or 192.168.1.0/24" required />
+      <div style="margin-top:10px;">
+        <button id="submitBtn" type="submit">Run Scan</button>
+        <span id="spinner" style="display:none; margin-left:12px;" class="muted small">Running scan... this may take some time.</span>
+      </div>
+    </form>
+    <p class="muted small">Note: This runs the scanner synchronously on the server. For better UX, convert to async jobs (RQ/Celery) later.</p>
+  </div>
+
+  <div class="card">
+    <h2>Recent Scans</h2>
+    {% if recent_scans %}
+      <table>
+        <thead><tr><th>ID</th><th>Target</th><th>Started</th><th>Finished</th><th>Report</th></tr></thead>
+        <tbody>
+          {% for s in recent_scans %}
+          <tr>
+            <td>{{ s.id }}</td>
+            <td>{{ s.target }}</td>
+            <td>{{ s.started_at }}</td>
+            <td>{{ s.finished_at or "In progress" }}</td>
+            <td><a href="{{ url_for('main.report', scan_id=s.id) }}">View</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="muted">No scans yet. Start one above.</p>
+    {% endif %}
+  </div>
+
+  <script>
+  // Small UX: disable button after submit to avoid duplicate submissions
+  const form = document.getElementById('scanForm');
+  const btn = document.getElementById('submitBtn');
+  const spinner = document.getElementById('spinner');
+
+  form.addEventListener('submit', function() {
+    btn.disabled = true;
+    btn.classList.add('btn-disabled');
+    spinner.style.display = 'inline';
+  });
+
+  </script>
+</body>
+</html>
