@@ -78,9 +78,34 @@
       font-weight: 700;
     }
 
-    .flash { padding: 10px 12px; border-radius: 10px; margin-bottom: 10px; border: 1px solid transparent; }
+    .flash {
+      padding: 10px 12px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      border: 1px solid transparent;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
     .flash-success { background: #dff1e9; color: #14543b; border-color: #b9dec9; }
     .flash-danger { background: #fce6e9; color: #842733; border-color: #f3c2ca; }
+    .flash-close {
+      border: 0;
+      background: transparent;
+      color: currentColor;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      padding: 0;
+      box-shadow: none;
+      display: inline-grid;
+      place-items: center;
+      font-size: 12px;
+      opacity: 0.75;
+      cursor: pointer;
+    }
+    .flash-close:hover { opacity: 1; }
 
     @keyframes appear {
       from { opacity: 0; transform: translateY(12px); }
@@ -96,7 +121,10 @@
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
-          <div class="flash flash-{{ category }}">{{ message }}</div>
+          <div class="flash flash-{{ category }}" data-flash>
+            <span>{{ message }}</span>
+            <button class="flash-close" type="button" aria-label="Dismiss">x</button>
+          </div>
         {% endfor %}
       {% endif %}
     {% endwith %}
@@ -114,5 +142,16 @@
       <button type="submit">Sign In</button>
     </form>
   </div>
+
+  <script>
+    document.querySelectorAll('[data-flash] .flash-close').forEach(function (closeBtn) {
+      closeBtn.addEventListener('click', function () {
+        const flash = closeBtn.closest('[data-flash]');
+        if (flash) {
+          flash.remove();
+        }
+      });
+    });
+  </script>
 </body>
 </html>

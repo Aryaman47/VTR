@@ -35,7 +35,7 @@
     }
 
     .layout {
-      max-width: 1160px;
+      max-width: 1420px;
       margin: 0 auto;
       display: grid;
       gap: 18px;
@@ -88,6 +88,10 @@
       letter-spacing: 0.3px;
     }
 
+    #scanForm {
+      width: 100%;
+    }
+
     .grid {
       display: grid;
       gap: 18px;
@@ -100,13 +104,39 @@
       font-weight: 600;
     }
 
-    input[type="text"] {
+    .target-wrap {
       width: 100%;
-      padding: 12px 13px;
-      border-radius: 10px;
-      border: 1px solid #c8dae6;
-      font-size: 0.98rem;
-      background: #fdfefe;
+      max-width: none;
+      margin: 0;
+    }
+
+    .scan-card {
+      padding-left: 26px;
+      padding-right: 26px;
+    }
+
+    .scan-card #scanForm {
+      width: 100% !important;
+      max-width: none !important;
+    }
+
+    .scan-card .target-wrap {
+      width: 100% !important;
+      max-width: none !important;
+    }
+
+    input#target,
+    input#target::placeholder {
+      font-family: "IBM Plex Sans", sans-serif !important;
+    }
+
+    .scan-card input#target {
+      width: 100% !important;
+      max-width: none !important;
+      min-height: 74px;
+      padding-top: 14px;
+      padding-bottom: 14px;
+      font-size: 1rem;
     }
 
     .actions {
@@ -114,6 +144,7 @@
       display: flex;
       gap: 10px;
       align-items: center;
+      justify-content: flex-start;
       flex-wrap: wrap;
     }
 
@@ -123,6 +154,8 @@
       border-radius: 10px;
       border: 1px solid transparent;
       font-weight: 600;
+      font-size: 0.95rem;
+      line-height: 1.2;
       cursor: pointer;
       text-decoration: none;
       transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
@@ -140,9 +173,11 @@
     }
 
     .btn-link {
-      border-color: #7fc9d4;
-      color: var(--brand-strong);
-      background: #edf8fa;
+      display: inline-flex;
+      align-items: center;
+      color: #fff;
+      background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+      box-shadow: 0 8px 18px rgba(11, 102, 117, 0.35);
     }
 
     .signout {
@@ -210,9 +245,35 @@
     .muted { color: var(--text-soft); font-size: 0.9em; }
     .small { font-size: 0.9em; }
     .btn-disabled { opacity: 0.5; pointer-events: none; }
-    .flash { padding: 10px 12px; border-radius: 10px; margin-bottom: 10px; border: 1px solid transparent; }
+    .flash {
+      padding: 10px 12px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      border: 1px solid transparent;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
     .flash-success { background: #e0f3ea; color: #14533a; border-color: #b7dfcd; }
     .flash-danger { background: #fde6e9; color: #7f2530; border-color: #f6c3cb; }
+    .flash-close {
+      border: 0;
+      background: transparent;
+      color: currentColor;
+      font-size: 12px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      padding: 0;
+      display: inline-grid;
+      place-items: center;
+      cursor: pointer;
+      box-shadow: none;
+      opacity: 0.75;
+      transition: opacity 120ms ease;
+    }
+    .flash-close:hover { opacity: 1; }
 
     .view-link {
       color: #0a5f6d;
@@ -259,27 +320,32 @@
       {% if messages %}
         <div class="card">
           {% for category, message in messages %}
-            <div class="flash flash-{{ category }}">{{ message }}</div>
+            <div class="flash flash-{{ category }}" data-flash>
+              <span>{{ message }}</span>
+              <button class="flash-close" type="button" aria-label="Dismiss">x</button>
+            </div>
           {% endfor %}
         </div>
       {% endif %}
     {% endwith %}
 
     <main class="shell">
-      <section class="card">
+      <section class="card scan-card">
         <h2>Launch New Scan</h2>
         <form id="scanForm" action="{{ url_for('main.home') }}" method="post">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-          <label for="target">Target (IP, CIDR, or hostname)</label>
-          <input id="target" name="target" placeholder="google.com or 192.168.1.0/24" required />
-          <div class="actions">
-            <button id="submitBtn" type="submit">Run Scan</button>
-            {% if preferred_scan_id %}
-              <a id="reportBtn" class="btn-link" href="{{ url_for('main.report', scan_id=preferred_scan_id) }}">Open Active/Last Report</a>
-            {% else %}
-              <a id="reportBtn" class="btn-link btn-disabled" href="#" aria-disabled="true">Open Active/Last Report</a>
-            {% endif %}
-            <span id="spinner" style="display:none;" class="muted small">Scan queued. Building report feed...</span>
+          <div class="target-wrap">
+            <label for="target">Target (IP, CIDR, or hostname)</label>
+            <input id="target" name="target" placeholder="google.com or 192.168.1.0/24" required />
+            <div class="actions">
+              <button id="submitBtn" type="submit">Run Scan</button>
+              {% if preferred_scan_id %}
+                <a id="reportBtn" class="btn-link" href="{{ url_for('main.report', scan_id=preferred_scan_id) }}">Latest Report</a>
+              {% else %}
+                <a id="reportBtn" class="btn-link btn-disabled" href="#" aria-disabled="true">Latest Report</a>
+              {% endif %}
+              <span id="spinner" style="display:none;" class="muted small">Scan queued. Building report feed...</span>
+            </div>
           </div>
         </form>
         <p class="muted small">Scans are queued and processed in the background. Use the report button for live status and findings.</p>
@@ -327,6 +393,15 @@
       reportBtn.removeAttribute('aria-disabled');
     }
     spinner.style.display = 'inline';
+  });
+
+  document.querySelectorAll('[data-flash] .flash-close').forEach(function(closeBtn) {
+    closeBtn.addEventListener('click', function() {
+      const flash = closeBtn.closest('[data-flash]');
+      if (flash) {
+        flash.remove();
+      }
+    });
   });
 
   </script>

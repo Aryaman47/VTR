@@ -24,7 +24,6 @@ def run_scan_job(scan_id, target):
             xml_path, xml_text = run_nmap_and_get_xml(target, extra_args=None, timeout=300)
 
             scan.raw_xml = xml_text
-            scan.finished_at = datetime.utcnow()
             db.session.add(scan)
             db.session.commit()
 
@@ -92,6 +91,8 @@ def run_scan_job(scan_id, target):
                         )
                         db.session.add(vf)
 
+            scan.finished_at = datetime.utcnow()
+            db.session.add(scan)
             db.session.commit()
 
         except Exception as exc:

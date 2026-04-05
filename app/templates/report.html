@@ -64,6 +64,13 @@
       flex-wrap: wrap;
     }
 
+    .header-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
     h1, h2 {
       margin: 0;
       font-family: "Space Grotesk", sans-serif;
@@ -152,6 +159,51 @@
       background: var(--panel-soft);
     }
 
+    .lifecycle-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .lifecycle-card {
+      border: 1px solid #d6e4ee;
+      border-radius: 12px;
+      background: #f7fbff;
+      padding: 10px 12px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .lifecycle-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.55px;
+      color: #4c6b7c;
+      font-weight: 700;
+    }
+
+    .lifecycle-value {
+      font-family: "Space Grotesk", sans-serif;
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #17384b;
+      line-height: 1;
+    }
+
+    .status-chip {
+      display: inline-block;
+      width: fit-content;
+      border-radius: 999px;
+      padding: 3px 9px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.45px;
+      background: #eaf3fa;
+      color: #355870;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
@@ -222,13 +274,85 @@
       cursor: pointer;
     }
 
+    .home-btn {
+      display: inline-block;
+      text-decoration: none;
+      color: #fff;
+      border-radius: 10px;
+      border: 1px solid rgba(189, 225, 240, 0.45);
+      padding: 7px 12px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #0f8395, #0a6674);
+      font-size: 0.9rem;
+    }
+
     .signout {
       background: linear-gradient(135deg, #cf4050, #8f2d38);
     }
 
-    .flash { padding: 10px 12px; border-radius: 10px; margin-bottom: 8px; border: 1px solid transparent; }
+    .finding-form {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .finding-form label {
+      font-size: 0.84rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #466679;
+      font-weight: 700;
+    }
+
+    .finding-form select {
+      appearance: none;
+      background:
+        linear-gradient(45deg, transparent 50%, #3d6275 50%) calc(100% - 14px) calc(50% - 2px) / 6px 6px no-repeat,
+        linear-gradient(135deg, #3d6275 50%, transparent 50%) calc(100% - 9px) calc(50% - 2px) / 6px 6px no-repeat,
+        #eff6fb;
+      padding: 9px 30px 9px 11px;
+      border-color: #b7ccdc;
+      min-width: 185px;
+      font-size: 0.9rem;
+    }
+
+    .finding-form button {
+      padding: 9px 13px;
+      font-size: 0.84rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .flash {
+      padding: 10px 12px;
+      border-radius: 10px;
+      margin-bottom: 8px;
+      border: 1px solid transparent;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
     .flash-success { background: #ddf2e8; color: #14533a; border-color: #b8ddca; }
     .flash-danger { background: #fce6e9; color: #842733; border-color: #f4c3ca; }
+    .flash-close {
+      border: 0;
+      background: transparent;
+      color: currentColor;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      padding: 0;
+      display: inline-grid;
+      place-items: center;
+      box-shadow: none;
+      font-size: 12px;
+      opacity: 0.75;
+      cursor: pointer;
+    }
+    .flash-close:hover { opacity: 1; }
 
     @keyframes reveal {
       from { opacity: 0; transform: translateY(10px); }
@@ -251,7 +375,10 @@
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
-          <div class="flash flash-{{ category }}">{{ message }}</div>
+          <div class="flash flash-{{ category }}" data-flash>
+            <span>{{ message }}</span>
+            <button class="flash-close" type="button" aria-label="Dismiss">x</button>
+          </div>
         {% endfor %}
       {% endif %}
     {% endwith %}
@@ -259,17 +386,20 @@
     <header class="header">
       <div class="header-top">
         <h1>VTR Vulnerability Report</h1>
-        <form action="{{ url_for('main.logout') }}" method="post">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-          <button class="signout" type="submit">Sign Out</button>
-        </form>
+        <div class="header-actions">
+          <a class="home-btn" href="{{ url_for('main.home') }}">Home</a>
+          <form action="{{ url_for('main.logout') }}" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <button class="signout" type="submit">Sign Out</button>
+          </form>
+        </div>
       </div>
       <div class="meta">
         <span><strong>Scan ID:</strong> {{ scan.id }}</span>
         <span><strong>Target:</strong> {{ scan.target }}</span>
-        <span><strong>Status:</strong> <span class="badge {{ status }}">{{ status }}</span></span>
+        <span><strong>Status:</strong> <span id="scanStatusBadge" class="badge {{ status }}">{{ status }}</span></span>
         <span><strong>Started:</strong> {{ scan.started_at }}</span>
-        <span><strong>Finished:</strong> {{ scan.finished_at or "Not finished" }}</span>
+        <span><strong>Finished:</strong> <span id="scanFinishedAt">{{ scan.finished_at or "Not finished" }}</span></span>
       </div>
     </header>
 
@@ -291,32 +421,21 @@
     {% if finding_counts_by_status %}
       <section class="panel">
         <h2>Finding Lifecycle Status</h2>
-        <div class="status-table-wrap">
-          <table>
-            <thead><tr><th>Status</th><th>Count</th></tr></thead>
-            <tbody>
-              {% for key, value in finding_counts_by_status.items() %}
-                <tr>
-                  <td>{{ key }}</td>
-                  <td>{{ value }}</td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+        <div class="lifecycle-grid">
+          {% for key, value in finding_counts_by_status.items() %}
+            <article class="lifecycle-card">
+              <span class="lifecycle-label">{{ key.replace('_', ' ') }}</span>
+              <span class="lifecycle-value">{{ value }}</span>
+              <span class="status-chip">{{ key.replace('_', ' ') }}</span>
+            </article>
+          {% endfor %}
         </div>
       </section>
     {% endif %}
 
-    {% if status in ["queued", "running"] %}
-      <section class="panel">
-        <p class="muted">Scan is still in progress. This page auto-refreshes every 5 seconds.</p>
-      </section>
-      <script>
-        setTimeout(function () {
-          window.location.reload();
-        }, 5000);
-      </script>
-    {% endif %}
+    <section id="scanProgressPanel" class="panel" {% if status not in ["queued", "running"] %}style="display:none;"{% endif %}>
+      <p class="muted">Scan is still in progress. Status updates are checked automatically.</p>
+    </section>
 
     {% if hosts %}
       {% for host in hosts %}
@@ -356,17 +475,17 @@
                           <span class="chip">{{ finding.status }}</span>
                           <span class="chip">{{ finding.source }}</span>
                         </div>
-                        <form action="{{ url_for('main.update_finding_status', finding_id=finding.id) }}" method="post">
+                        <form class="finding-form" action="{{ url_for('main.update_finding_status', finding_id=finding.id) }}" method="post">
                           <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
                           <label>
                             Update status
                             <select name="status">
-                              <option value="new" {% if finding.status == 'new' %}selected{% endif %}>new</option>
-                              <option value="triaged" {% if finding.status == 'triaged' %}selected{% endif %}>triaged</option>
-                              <option value="in_progress" {% if finding.status == 'in_progress' %}selected{% endif %}>in_progress</option>
-                              <option value="resolved" {% if finding.status == 'resolved' %}selected{% endif %}>resolved</option>
-                              <option value="risk_accepted" {% if finding.status == 'risk_accepted' %}selected{% endif %}>risk_accepted</option>
-                              <option value="false_positive" {% if finding.status == 'false_positive' %}selected{% endif %}>false_positive</option>
+                              <option value="new" {% if finding.status == 'new' %}selected{% endif %}>New</option>
+                              <option value="triaged" {% if finding.status == 'triaged' %}selected{% endif %}>Triaged</option>
+                              <option value="in_progress" {% if finding.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                              <option value="resolved" {% if finding.status == 'resolved' %}selected{% endif %}>Resolved</option>
+                              <option value="risk_accepted" {% if finding.status == 'risk_accepted' %}selected{% endif %}>Risk Accepted</option>
+                              <option value="false_positive" {% if finding.status == 'false_positive' %}selected{% endif %}>False Positive</option>
                             </select>
                           </label>
                           <button type="submit">Save</button>
@@ -387,9 +506,69 @@
       {% endfor %}
     {% else %}
       <section class="panel">
-        <p>No hosts discovered.</p>
+        <p id="noHostsMsg">No hosts discovered.</p>
       </section>
     {% endif %}
   </div>
+
+  <script>
+    (function () {
+      document.querySelectorAll('[data-flash] .flash-close').forEach(function (closeBtn) {
+        closeBtn.addEventListener('click', function () {
+          const flash = closeBtn.closest('[data-flash]');
+          if (flash) {
+            flash.remove();
+          }
+        });
+      });
+
+      const scanId = {{ scan.id }};
+      let currentStatus = "{{ status }}";
+
+      if (currentStatus !== "queued" && currentStatus !== "running") {
+        return;
+      }
+
+      const statusBadge = document.getElementById('scanStatusBadge');
+      const finishedAt = document.getElementById('scanFinishedAt');
+      const progressPanel = document.getElementById('scanProgressPanel');
+
+      const pollTimer = setInterval(function () {
+        fetch("{{ url_for('main.scan_status', scan_id=scan.id) }}", {
+          headers: {
+            "X-Requested-With": "XMLHttpRequest"
+          }
+        })
+          .then(function (resp) { return resp.json(); })
+          .then(function (data) {
+            if (!data || !data.status) {
+              return;
+            }
+
+            if (statusBadge) {
+              statusBadge.textContent = data.status;
+              statusBadge.className = "badge " + data.status;
+            }
+
+            if (finishedAt && data.finished_at) {
+              finishedAt.textContent = data.finished_at;
+            }
+
+            if (data.status === "queued" || data.status === "running") {
+              return;
+            }
+
+            clearInterval(pollTimer);
+            if (progressPanel) {
+              progressPanel.style.display = "none";
+            }
+            window.location.reload();
+          })
+          .catch(function () {
+            // keep polling on transient network errors
+          });
+      }, 1800);
+    })();
+  </script>
 </body>
 </html>
