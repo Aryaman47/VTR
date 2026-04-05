@@ -5,10 +5,11 @@ import os
 
 def run_nmap_and_get_xml(target, extra_args=None, timeout=None):
     """
-    Runs nmap -sV -oX <tmpfile> <target> and returns the path and XML contents.
-    Synchronous and blocking: suitable for testing. Use with care.
+        Runs nmap -sV -oX <tmpfile> <target> and returns the path and XML contents.
+        Synchronous and blocking: suitable for testing. Use with care.
     """
     args = ["nmap", "-sV", "-oX"]
+
     # create a temporary file to store XML output
     fd, xml_path = tempfile.mkstemp(prefix="vtr_nmap_", suffix=".xml")
     os.close(fd)
@@ -21,9 +22,11 @@ def run_nmap_and_get_xml(target, extra_args=None, timeout=None):
     try:
         # run nmap
         subprocess.run(args, check=True, timeout=timeout)
+        
         # read xml content
         with open(xml_path, "r", encoding="utf-8", errors="ignore") as f:
             xml_text = f.read()
+    
     finally:
         # keep the xml file if you want. We return xml_text anyway.
         pass
@@ -32,13 +35,15 @@ def run_nmap_and_get_xml(target, extra_args=None, timeout=None):
 
 def parse_nmap_xml(xml_text):
     """
-    Parse nmap xml (string) and return list of hosts with services.
-    Returns: [{ "ip": "1.2.3.4", "hostname": "host", "services": [ {port,protocol,state,service,product,version}, ... ] }, ...]
+        Parse nmap xml (string) and return list of hosts with services.
+        Returns: [{ "ip": "1.2.3.4", "hostname": "host", "services": [ {port,protocol,state,service,product,version}, ... ] }, ...]
     """
     root = ET.fromstring(xml_text)
     ns = {}  # no namespace expected for nmap
+    
     results = []
     for host in root.findall("host"):
+
         # fetch address (prefer ipv4)
         addr_el = host.find("address")
         ip = addr_el.get("addr") if addr_el is not None else None

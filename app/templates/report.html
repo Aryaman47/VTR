@@ -7,20 +7,94 @@
     body{font-family:Arial,Helvetica,sans-serif;padding:16px}
     table{width:100%;border-collapse:collapse;margin-bottom:20px}
     th,td{border:1px solid #ddd;padding:8px;text-align:left}
+    .badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;text-transform:uppercase}
+    .queued{background:#e9ecef;color:#343a40}
+    .running{background:#cfe2ff;color:#084298}
+    .completed{background:#d1e7dd;color:#0f5132}
+    .failed{background:#f8d7da;color:#842029}
+    .sev-critical{color:#b02a37;font-weight:700}
+    .sev-high{color:#d63384;font-weight:700}
+    .sev-medium{color:#b36b00;font-weight:700}
+    .sev-low{color:#495057;font-weight:700}
+    .sev-unknown{color:#6c757d;font-weight:700}
+    .muted{color:#6c757d}
+    .finding-card{border:1px solid #ececec;border-radius:8px;padding:10px;margin:8px 0;background:#fafafa}
+    .flash{padding:8px 10px;border-radius:6px;margin-bottom:10px}
+    .flash-success{background:#d1e7dd;color:#0f5132;border:1px solid #badbcc}
+    .flash-danger{background:#f8d7da;color:#842029;border:1px solid #f5c2c7}
   </style>
 </head>
 <body>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
   <h1>VTR Scan Report</h1>
   <p><strong>Scan ID:</strong> {{ scan.id }}</p>
   <p><strong>Target:</strong> {{ scan.target }}</p>
+  <p><strong>Status:</strong> <span class="badge {{ status }}">{{ status }}</span></p>
   <p><strong>Started:</strong> {{ scan.started_at }}</p>
-  <p><strong>Finished:</strong> {{ scan.finished_at }}</p>
+  <p><strong>Finished:</strong> {{ scan.finished_at or "Not finished" }}</p>
+
+  {% if error_message %}
+    <p><strong>Error:</strong> {{ error_message }}</p>
+  {% endif %}
+
+  <h2>Vulnerability Severity Summary</h2>
+  <table>
+    <thead><tr><th>Critical</th><th>High</th><th>Medium</th><th>Low</th><th>Unknown</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="sev-critical">{{ counts.critical }}</td>
+        <td class="sev-high">{{ counts.high }}</td>
+        <td class="sev-medium">{{ counts.medium }}</td>
+        <td class="sev-low">{{ counts.low }}</td>
+        <td class="sev-unknown">{{ counts.unknown }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  {% if finding_counts_by_status %}
+    <h2>Finding Lifecycle Status</h2>
+    <table>
+      <thead><tr><th>Status</th><th>Count</th></tr></thead>
+      <tbody>
+        {% for key, value in finding_counts_by_status.items() %}
+          <tr>
+            <td>{{ key }}</td>
+            <td>{{ value }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
+  {% if status in ["queued", "running"] %}
+    <p class="muted">Scan is still in progress. This page auto-refreshes every 5 seconds.</p>
+    <script>
+      setTimeout(function () {
+        window.location.reload();
+      }, 5000);
+    </script>
+  {% endif %}
 
   {% if hosts %}
     {% for host in hosts %}
       <h2>Host: {{ host.ip }} {% if host.hostname %} ({{ host.hostname }}) {% endif %}</h2>
+      <p>
+        <strong>Host Severity:</strong>
+        Critical {{ host.counts.critical }},
+        High {{ host.counts.high }},
+        Medium {{ host.counts.medium }},
+        Low {{ host.counts.low }},
+        Unknown {{ host.counts.unknown }}
+      </p>
       <table>
-        <thead><tr><th>Port</th><th>Protocol</th><th>State</th><th>Service</th><th>Product</th><th>Version</th></tr></thead>
+        <thead><tr><th>Port</th><th>Protocol</th><th>State</th><th>Service</th><th>Product</th><th>Version</th><th>Severity</th></tr></thead>
         <tbody>
           {% for svc in host.services %}
           <tr>
@@ -30,7 +104,42 @@
             <td>{{ svc.service }}</td>
             <td>{{ svc.product or "" }}</td>
             <td>{{ svc.version or "" }}</td>
+            <td class="sev-{{ svc.severity }}">{{ svc.severity }}</td>
           </tr>
+          {% if svc.findings %}
+          <tr>
+            <td colspan="7">
+              {% for finding in svc.findings %}
+                <div class="finding-card">
+                  <div>
+                    <strong>{{ finding.cve_id }}</strong>
+                    | CVSS: {{ finding.cvss_score if finding.cvss_score is not none else "N/A" }}
+                    | Severity: <span class="sev-{{ finding.severity }}">{{ finding.severity }}</span>
+                    | Status: {{ finding.status }}
+                    | Source: {{ finding.source }}
+                  </div>
+                  <form action="{{ url_for('main.update_finding_status', finding_id=finding.id) }}" method="post" style="margin-top:6px;">
+                    <label>
+                      Update status:
+                      <select name="status">
+                        <option value="new" {% if finding.status == 'new' %}selected{% endif %}>new</option>
+                        <option value="triaged" {% if finding.status == 'triaged' %}selected{% endif %}>triaged</option>
+                        <option value="in_progress" {% if finding.status == 'in_progress' %}selected{% endif %}>in_progress</option>
+                        <option value="resolved" {% if finding.status == 'resolved' %}selected{% endif %}>resolved</option>
+                        <option value="risk_accepted" {% if finding.status == 'risk_accepted' %}selected{% endif %}>risk_accepted</option>
+                        <option value="false_positive" {% if finding.status == 'false_positive' %}selected{% endif %}>false_positive</option>
+                      </select>
+                    </label>
+                    <button type="submit">Save</button>
+                  </form>
+                  {% if finding.description %}
+                    <div class="muted">{{ finding.description }}</div>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </td>
+          </tr>
+          {% endif %}
           {% endfor %}
         </tbody>
       </table>

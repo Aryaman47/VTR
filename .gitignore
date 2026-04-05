@@ -1,1 +1,17 @@
+# Environment variables file
 *.env
+
+# Node modules
+node_modules/
+
+# Pycache
+__pycache__/
+
+# venv
+venv/
+
+# files
+*.pyc
+*.txt
+*.md
+secretKeyGenerator.py

@@ -14,10 +14,23 @@
     .muted { color: #666; font-size: 0.9em; }
     .small { font-size: 0.9em; }
     .btn-disabled { opacity: 0.6; pointer-events: none; }
+    .flash { padding: 8px 10px; border-radius: 6px; margin-bottom: 10px; }
+    .flash-success { background: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
+    .flash-danger { background: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
   </style>
 </head>
 <body>
   <h1>VTR — Vulnerability Tracking & Reporting</h1>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="card">
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
 
   <div class="card">
     <h2>Start a Scan</h2>
@@ -29,19 +42,20 @@
         <span id="spinner" style="display:none; margin-left:12px;" class="muted small">Running scan... this may take some time.</span>
       </div>
     </form>
-    <p class="muted small">Note: This runs the scanner synchronously on the server. For better UX, convert to async jobs (RQ/Celery) later.</p>
+    <p class="muted small">Scans are queued and processed in the background. Open the report page to watch status updates.</p>
   </div>
 
   <div class="card">
     <h2>Recent Scans</h2>
     {% if recent_scans %}
       <table>
-        <thead><tr><th>ID</th><th>Target</th><th>Started</th><th>Finished</th><th>Report</th></tr></thead>
+        <thead><tr><th>ID</th><th>Target</th><th>Status</th><th>Started</th><th>Finished</th><th>Report</th></tr></thead>
         <tbody>
           {% for s in recent_scans %}
           <tr>
             <td>{{ s.id }}</td>
             <td>{{ s.target }}</td>
+            <td>{{ s.status }}</td>
             <td>{{ s.started_at }}</td>
             <td>{{ s.finished_at or "In progress" }}</td>
             <td><a href="{{ url_for('main.report', scan_id=s.id) }}">View</a></td>
