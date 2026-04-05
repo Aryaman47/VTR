@@ -4,79 +4,328 @@
   <meta charset="utf-8"/>
   <title>VTR — Home</title>
   <style>
-    body { font-family: Arial, Helvetica, sans-serif; padding: 18px; }
-    .card { border: 1px solid #ddd; padding: 12px; margin-bottom: 12px; border-radius: 6px; box-shadow: 0 1px 0 rgba(0,0,0,0.04); }
-    label { display:block; margin-bottom: 6px; font-weight:600; }
-    input[type="text"] { width: 360px; padding: 8px; }
-    button { padding: 8px 12px; cursor:pointer; }
-    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-    th, td { border:1px solid #eee; padding: 8px; text-align: left; }
-    .muted { color: #666; font-size: 0.9em; }
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+    :root {
+      --bg-0: #09131d;
+      --bg-1: #102636;
+      --panel: #ffffff;
+      --panel-muted: #f4f8fb;
+      --text-main: #1b2833;
+      --text-soft: #5c6b77;
+      --brand: #0d8092;
+      --brand-strong: #0a6170;
+      --danger: #cf2f3d;
+      --border: #dde7ef;
+      --shadow: 0 10px 30px rgba(6, 23, 36, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", sans-serif;
+      color: var(--text-main);
+      background:
+        radial-gradient(circle at 10% 10%, rgba(16, 161, 180, 0.25), transparent 40%),
+        radial-gradient(circle at 90% 0%, rgba(255, 166, 0, 0.14), transparent 40%),
+        linear-gradient(160deg, var(--bg-0), var(--bg-1));
+      min-height: 100vh;
+      padding: 22px;
+    }
+
+    .layout {
+      max-width: 1160px;
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+    }
+
+    .topbar {
+      background: rgba(7, 19, 30, 0.72);
+      border: 1px solid rgba(196, 223, 241, 0.2);
+      border-radius: 16px;
+      padding: 18px;
+      color: #ecf7ff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      backdrop-filter: blur(5px);
+      animation: riseIn 420ms ease;
+    }
+
+    .title {
+      margin: 0;
+      font-family: "Space Grotesk", sans-serif;
+      font-size: clamp(1.4rem, 2.8vw, 2.1rem);
+      letter-spacing: 0.4px;
+    }
+
+    .subtitle {
+      margin: 4px 0 0;
+      color: #a8c6d8;
+      font-size: 0.95rem;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 18px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+      animation: riseIn 460ms ease;
+    }
+
+    .card h2 {
+      margin: 0 0 10px;
+      font-family: "Space Grotesk", sans-serif;
+      letter-spacing: 0.3px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: minmax(280px, 1.05fr) minmax(380px, 1.4fr);
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 13px;
+      border-radius: 10px;
+      border: 1px solid #c8dae6;
+      font-size: 0.98rem;
+      background: #fdfefe;
+    }
+
+    .actions {
+      margin-top: 12px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    button,
+    .btn-link {
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+    }
+
+    button {
+      color: #fff;
+      background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+      box-shadow: 0 8px 18px rgba(11, 102, 117, 0.35);
+    }
+
+    button:hover,
+    .btn-link:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn-link {
+      border-color: #7fc9d4;
+      color: var(--brand-strong);
+      background: #edf8fa;
+    }
+
+    .signout {
+      color: #fff;
+      background: linear-gradient(135deg, #d1414e, #982b35);
+      box-shadow: none;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--panel-muted);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 660px;
+    }
+
+    th, td {
+      padding: 10px 11px;
+      text-align: left;
+      border-bottom: 1px solid #dce7ee;
+      font-size: 0.93rem;
+    }
+
+    th {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #406072;
+      background: #eaf3f8;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .status {
+      border-radius: 999px;
+      display: inline-block;
+      font-weight: 700;
+      padding: 3px 10px;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.4px;
+    }
+
+    .status-running, .status-queued {
+      background: #d6edf7;
+      color: #0f5e78;
+    }
+
+    .status-completed {
+      background: #d8f0e3;
+      color: #1f6f4c;
+    }
+
+    .status-failed {
+      background: #f8dbe0;
+      color: #842936;
+    }
+
+    .muted { color: var(--text-soft); font-size: 0.9em; }
     .small { font-size: 0.9em; }
-    .btn-disabled { opacity: 0.6; pointer-events: none; }
-    .flash { padding: 8px 10px; border-radius: 6px; margin-bottom: 10px; }
-    .flash-success { background: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
-    .flash-danger { background: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
+    .btn-disabled { opacity: 0.5; pointer-events: none; }
+    .flash { padding: 10px 12px; border-radius: 10px; margin-bottom: 10px; border: 1px solid transparent; }
+    .flash-success { background: #e0f3ea; color: #14533a; border-color: #b7dfcd; }
+    .flash-danger { background: #fde6e9; color: #7f2530; border-color: #f6c3cb; }
+
+    .view-link {
+      color: #0a5f6d;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .view-link:hover {
+      text-decoration: underline;
+    }
+
+    @keyframes riseIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 960px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        gap: 12px;
+        flex-direction: column;
+      }
+    }
   </style>
 </head>
 <body>
-  <h1>VTR — Vulnerability Tracking & Reporting</h1>
-
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      <div class="card">
-        {% for category, message in messages %}
-          <div class="flash flash-{{ category }}">{{ message }}</div>
-        {% endfor %}
+  <div class="layout">
+    <header class="topbar">
+      <div>
+        <h1 class="title">VTR Security Dashboard</h1>
+        <p class="subtitle">Vulnerability Tracking and Reporting for Active Infrastructure</p>
       </div>
-    {% endif %}
-  {% endwith %}
+      <form action="{{ url_for('main.logout') }}" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <button class="signout" type="submit">Sign Out</button>
+      </form>
+    </header>
 
-  <div class="card">
-    <h2>Start a Scan</h2>
-    <form id="scanForm" action="{{ url_for('main.home') }}" method="post">
-      <label for="target">Target (IP, CIDR or hostname):</label>
-      <input id="target" name="target" placeholder="127.0.0.1 or 192.168.1.0/24" required />
-      <div style="margin-top:10px;">
-        <button id="submitBtn" type="submit">Run Scan</button>
-        <span id="spinner" style="display:none; margin-left:12px;" class="muted small">Running scan... this may take some time.</span>
-      </div>
-    </form>
-    <p class="muted small">Scans are queued and processed in the background. Open the report page to watch status updates.</p>
-  </div>
-
-  <div class="card">
-    <h2>Recent Scans</h2>
-    {% if recent_scans %}
-      <table>
-        <thead><tr><th>ID</th><th>Target</th><th>Status</th><th>Started</th><th>Finished</th><th>Report</th></tr></thead>
-        <tbody>
-          {% for s in recent_scans %}
-          <tr>
-            <td>{{ s.id }}</td>
-            <td>{{ s.target }}</td>
-            <td>{{ s.status }}</td>
-            <td>{{ s.started_at }}</td>
-            <td>{{ s.finished_at or "In progress" }}</td>
-            <td><a href="{{ url_for('main.report', scan_id=s.id) }}">View</a></td>
-          </tr>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="card">
+          {% for category, message in messages %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
           {% endfor %}
-        </tbody>
-      </table>
-    {% else %}
-      <p class="muted">No scans yet. Start one above.</p>
-    {% endif %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <main class="shell">
+      <section class="card">
+        <h2>Launch New Scan</h2>
+        <form id="scanForm" action="{{ url_for('main.home') }}" method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+          <label for="target">Target (IP, CIDR, or hostname)</label>
+          <input id="target" name="target" placeholder="google.com or 192.168.1.0/24" required />
+          <div class="actions">
+            <button id="submitBtn" type="submit">Run Scan</button>
+            {% if preferred_scan_id %}
+              <a id="reportBtn" class="btn-link" href="{{ url_for('main.report', scan_id=preferred_scan_id) }}">Open Active/Last Report</a>
+            {% else %}
+              <a id="reportBtn" class="btn-link btn-disabled" href="#" aria-disabled="true">Open Active/Last Report</a>
+            {% endif %}
+            <span id="spinner" style="display:none;" class="muted small">Scan queued. Building report feed...</span>
+          </div>
+        </form>
+        <p class="muted small">Scans are queued and processed in the background. Use the report button for live status and findings.</p>
+      </section>
+
+      <section class="card">
+        <h2>Recent Scans</h2>
+        {% if recent_scans %}
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>ID</th><th>Target</th><th>Status</th><th>Started</th><th>Finished</th><th>Report</th></tr></thead>
+              <tbody>
+                {% for s in recent_scans %}
+                <tr>
+                  <td>{{ s.id }}</td>
+                  <td>{{ s.target }}</td>
+                  <td><span class="status status-{{ s.status }}">{{ s.status }}</span></td>
+                  <td>{{ s.started_at }}</td>
+                  <td>{{ s.finished_at or "In progress" }}</td>
+                  <td><a class="view-link" href="{{ url_for('main.report', scan_id=s.id) }}">Inspect</a></td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="muted">No scans yet. Start one above.</p>
+        {% endif %}
+      </section>
+    </main>
   </div>
 
   <script>
   // Small UX: disable button after submit to avoid duplicate submissions
   const form = document.getElementById('scanForm');
   const btn = document.getElementById('submitBtn');
+  const reportBtn = document.getElementById('reportBtn');
   const spinner = document.getElementById('spinner');
 
   form.addEventListener('submit', function() {
     btn.disabled = true;
     btn.classList.add('btn-disabled');
+    if (reportBtn && reportBtn.getAttribute('href') && reportBtn.getAttribute('href') !== '#') {
+      reportBtn.classList.remove('btn-disabled');
+      reportBtn.removeAttribute('aria-disabled');
+    }
     spinner.style.display = 'inline';
   });
 

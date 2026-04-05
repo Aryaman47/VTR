@@ -47,6 +47,19 @@ def _extract_description(cve_payload):
     return (descriptions[0] or {}).get("value")
 
 
+def _iter_cpe_strings(configurations):
+    if not configurations:
+        return
+
+    for cfg in configurations:
+        nodes = (cfg or {}).get("nodes") or []
+        for node in nodes:
+            for match in (node or {}).get("cpeMatch") or []:
+                criteria = (match or {}).get("criteria")
+                if criteria:
+                    yield criteria.lower()
+
+
 def _nvd_request(url, timeout, api_key=None):
     headers = {"User-Agent": "VTR/1.0"}
     if api_key:
@@ -86,6 +99,33 @@ def _build_keywords(service_name=None, product=None, version=None):
     return deduped
 
 
+def _matches_service_context(cve_payload, service_name=None, product=None, version=None):
+    service_token = (service_name or "").strip().lower()
+    product_token = (product or "").strip().lower()
+    version_token = (version or "").strip().lower()
+
+    description = (_extract_description(cve_payload) or "").lower()
+    cpe_strings = list(_iter_cpe_strings((cve_payload or {}).get("configurations")))
+
+    # Require product/service relevance if we have those tokens.
+    if product_token:
+        product_hit = product_token in description or any(product_token in cpe for cpe in cpe_strings)
+        if not product_hit:
+            return False
+    elif service_token:
+        service_hit = service_token in description or any(service_token in cpe for cpe in cpe_strings)
+        if not service_hit:
+            return False
+
+    # If version is known, prefer CVEs that mention this version explicitly in text/CPE.
+    if version_token:
+        version_hit = version_token in description or any(version_token in cpe for cpe in cpe_strings)
+        if not version_hit:
+            return False
+
+    return True
+
+
 def find_cves_for_service(
     service_name=None,
     product=None,
@@ -114,6 +154,14 @@ def find_cves_for_service(
             cve = item.get("cve") or {}
             cve_id = cve.get("id")
             if not cve_id:
+                continue
+
+            if not _matches_service_context(
+                cve,
+                service_name=service_name,
+                product=product,
+                version=version,
+            ):
                 continue
 
             score = _extract_cvss_score(cve)

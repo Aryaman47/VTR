@@ -4,148 +4,392 @@
   <meta charset="utf-8"/>
   <title>VTR Scan Report - {{ scan.id }}</title>
   <style>
-    body{font-family:Arial,Helvetica,sans-serif;padding:16px}
-    table{width:100%;border-collapse:collapse;margin-bottom:20px}
-    th,td{border:1px solid #ddd;padding:8px;text-align:left}
-    .badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;text-transform:uppercase}
-    .queued{background:#e9ecef;color:#343a40}
-    .running{background:#cfe2ff;color:#084298}
-    .completed{background:#d1e7dd;color:#0f5132}
-    .failed{background:#f8d7da;color:#842029}
-    .sev-critical{color:#b02a37;font-weight:700}
-    .sev-high{color:#d63384;font-weight:700}
-    .sev-medium{color:#b36b00;font-weight:700}
-    .sev-low{color:#495057;font-weight:700}
-    .sev-unknown{color:#6c757d;font-weight:700}
-    .muted{color:#6c757d}
-    .finding-card{border:1px solid #ececec;border-radius:8px;padding:10px;margin:8px 0;background:#fafafa}
-    .flash{padding:8px 10px;border-radius:6px;margin-bottom:10px}
-    .flash-success{background:#d1e7dd;color:#0f5132;border:1px solid #badbcc}
-    .flash-danger{background:#f8d7da;color:#842029;border:1px solid #f5c2c7}
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+    :root {
+      --bg-main: #081922;
+      --bg-accent: #0f2f40;
+      --panel: #ffffff;
+      --panel-soft: #f4f8fb;
+      --text-main: #1a2a33;
+      --text-soft: #5d6c78;
+      --brand: #0f8395;
+      --brand-strong: #0a6674;
+      --critical: #b32735;
+      --high: #d74825;
+      --medium: #a86800;
+      --low: #2e6d5d;
+      --unknown: #5f6870;
+      --border: #dbe6ee;
+      --shadow: 0 12px 34px rgba(6, 20, 29, 0.14);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 22px;
+      font-family: "IBM Plex Sans", sans-serif;
+      color: var(--text-main);
+      background:
+        radial-gradient(circle at 0% 0%, rgba(13, 140, 157, 0.24), transparent 35%),
+        radial-gradient(circle at 100% 20%, rgba(222, 99, 35, 0.18), transparent 30%),
+        linear-gradient(160deg, var(--bg-main), var(--bg-accent));
+    }
+
+    .layout {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      gap: 16px;
+    }
+
+    .header {
+      border-radius: 16px;
+      background: rgba(6, 19, 29, 0.72);
+      color: #ecf7ff;
+      border: 1px solid rgba(184, 217, 232, 0.22);
+      padding: 18px;
+      display: grid;
+      gap: 10px;
+      animation: reveal 420ms ease;
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    h1, h2 {
+      margin: 0;
+      font-family: "Space Grotesk", sans-serif;
+      letter-spacing: 0.3px;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      color: #b9d2df;
+      font-size: 0.93rem;
+    }
+
+    .meta strong { color: #f2fbff; }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 11px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .queued { background: #dce8f2; color: #315367; }
+    .running { background: #d2ecf6; color: #0f5e77; }
+    .completed { background: #d5efdf; color: #235e43; }
+    .failed { background: #f8dde2; color: #8f2736; }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(5, minmax(120px, 1fr));
+      animation: reveal 460ms ease;
+    }
+
+    .sev-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .sev-card .label {
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      font-size: 0.72rem;
+      color: var(--text-soft);
+      margin-bottom: 6px;
+      font-weight: 700;
+    }
+
+    .sev-card .value {
+      font-size: 1.5rem;
+      font-family: "Space Grotesk", sans-serif;
+      font-weight: 700;
+    }
+
+    .sev-critical { color: var(--critical); }
+    .sev-high { color: var(--high); }
+    .sev-medium { color: var(--medium); }
+    .sev-low { color: var(--low); }
+    .sev-unknown { color: var(--unknown); }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+      animation: reveal 500ms ease;
+    }
+
+    .panel + .panel { margin-top: 14px; }
+
+    .muted { color: var(--text-soft); }
+
+    .status-table-wrap,
+    .service-table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--panel-soft);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 720px;
+    }
+
+    th, td {
+      padding: 10px 11px;
+      text-align: left;
+      border-bottom: 1px solid #dbe6ee;
+      font-size: 0.9rem;
+      vertical-align: top;
+    }
+
+    th {
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.58px;
+      background: #ebf4f9;
+      color: #415f70;
+    }
+
+    .host-title {
+      margin: 0 0 8px;
+      font-size: 1.1rem;
+    }
+
+    .finding-card {
+      border: 1px solid #d8e5ef;
+      border-radius: 12px;
+      padding: 12px;
+      margin: 8px 0;
+      background: #fbfdff;
+    }
+
+    .finding-top {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+    }
+
+    .chip {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 3px 10px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: #eef5fb;
+      color: #355468;
+    }
+
+    select, button {
+      border-radius: 10px;
+      border: 1px solid #b9cddb;
+      padding: 7px 10px;
+      font-weight: 600;
+      font-family: inherit;
+    }
+
+    button {
+      color: #fff;
+      border: none;
+      background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+      cursor: pointer;
+    }
+
+    .signout {
+      background: linear-gradient(135deg, #cf4050, #8f2d38);
+    }
+
+    .flash { padding: 10px 12px; border-radius: 10px; margin-bottom: 8px; border: 1px solid transparent; }
+    .flash-success { background: #ddf2e8; color: #14533a; border-color: #b8ddca; }
+    .flash-danger { background: #fce6e9; color: #842733; border-color: #f4c3ca; }
+
+    @keyframes reveal {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+      .header-top { align-items: flex-start; }
+    }
+
+    @media (max-width: 560px) {
+      .grid { grid-template-columns: 1fr; }
+      body { padding: 14px; }
+    }
   </style>
 </head>
 <body>
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% for category, message in messages %}
-        <div class="flash flash-{{ category }}">{{ message }}</div>
-      {% endfor %}
-    {% endif %}
-  {% endwith %}
-
-  <h1>VTR Scan Report</h1>
-  <p><strong>Scan ID:</strong> {{ scan.id }}</p>
-  <p><strong>Target:</strong> {{ scan.target }}</p>
-  <p><strong>Status:</strong> <span class="badge {{ status }}">{{ status }}</span></p>
-  <p><strong>Started:</strong> {{ scan.started_at }}</p>
-  <p><strong>Finished:</strong> {{ scan.finished_at or "Not finished" }}</p>
-
-  {% if error_message %}
-    <p><strong>Error:</strong> {{ error_message }}</p>
-  {% endif %}
-
-  <h2>Vulnerability Severity Summary</h2>
-  <table>
-    <thead><tr><th>Critical</th><th>High</th><th>Medium</th><th>Low</th><th>Unknown</th></tr></thead>
-    <tbody>
-      <tr>
-        <td class="sev-critical">{{ counts.critical }}</td>
-        <td class="sev-high">{{ counts.high }}</td>
-        <td class="sev-medium">{{ counts.medium }}</td>
-        <td class="sev-low">{{ counts.low }}</td>
-        <td class="sev-unknown">{{ counts.unknown }}</td>
-      </tr>
-    </tbody>
-  </table>
-
-  {% if finding_counts_by_status %}
-    <h2>Finding Lifecycle Status</h2>
-    <table>
-      <thead><tr><th>Status</th><th>Count</th></tr></thead>
-      <tbody>
-        {% for key, value in finding_counts_by_status.items() %}
-          <tr>
-            <td>{{ key }}</td>
-            <td>{{ value }}</td>
-          </tr>
+  <div class="layout">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">{{ message }}</div>
         {% endfor %}
-      </tbody>
-    </table>
-  {% endif %}
+      {% endif %}
+    {% endwith %}
 
-  {% if status in ["queued", "running"] %}
-    <p class="muted">Scan is still in progress. This page auto-refreshes every 5 seconds.</p>
-    <script>
-      setTimeout(function () {
-        window.location.reload();
-      }, 5000);
-    </script>
-  {% endif %}
+    <header class="header">
+      <div class="header-top">
+        <h1>VTR Vulnerability Report</h1>
+        <form action="{{ url_for('main.logout') }}" method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+          <button class="signout" type="submit">Sign Out</button>
+        </form>
+      </div>
+      <div class="meta">
+        <span><strong>Scan ID:</strong> {{ scan.id }}</span>
+        <span><strong>Target:</strong> {{ scan.target }}</span>
+        <span><strong>Status:</strong> <span class="badge {{ status }}">{{ status }}</span></span>
+        <span><strong>Started:</strong> {{ scan.started_at }}</span>
+        <span><strong>Finished:</strong> {{ scan.finished_at or "Not finished" }}</span>
+      </div>
+    </header>
 
-  {% if hosts %}
-    {% for host in hosts %}
-      <h2>Host: {{ host.ip }} {% if host.hostname %} ({{ host.hostname }}) {% endif %}</h2>
-      <p>
-        <strong>Host Severity:</strong>
-        Critical {{ host.counts.critical }},
-        High {{ host.counts.high }},
-        Medium {{ host.counts.medium }},
-        Low {{ host.counts.low }},
-        Unknown {{ host.counts.unknown }}
-      </p>
-      <table>
-        <thead><tr><th>Port</th><th>Protocol</th><th>State</th><th>Service</th><th>Product</th><th>Version</th><th>Severity</th></tr></thead>
-        <tbody>
-          {% for svc in host.services %}
-          <tr>
-            <td>{{ svc.port }}</td>
-            <td>{{ svc.protocol }}</td>
-            <td>{{ svc.state }}</td>
-            <td>{{ svc.service }}</td>
-            <td>{{ svc.product or "" }}</td>
-            <td>{{ svc.version or "" }}</td>
-            <td class="sev-{{ svc.severity }}">{{ svc.severity }}</td>
-          </tr>
-          {% if svc.findings %}
-          <tr>
-            <td colspan="7">
-              {% for finding in svc.findings %}
-                <div class="finding-card">
-                  <div>
-                    <strong>{{ finding.cve_id }}</strong>
-                    | CVSS: {{ finding.cvss_score if finding.cvss_score is not none else "N/A" }}
-                    | Severity: <span class="sev-{{ finding.severity }}">{{ finding.severity }}</span>
-                    | Status: {{ finding.status }}
-                    | Source: {{ finding.source }}
-                  </div>
-                  <form action="{{ url_for('main.update_finding_status', finding_id=finding.id) }}" method="post" style="margin-top:6px;">
-                    <label>
-                      Update status:
-                      <select name="status">
-                        <option value="new" {% if finding.status == 'new' %}selected{% endif %}>new</option>
-                        <option value="triaged" {% if finding.status == 'triaged' %}selected{% endif %}>triaged</option>
-                        <option value="in_progress" {% if finding.status == 'in_progress' %}selected{% endif %}>in_progress</option>
-                        <option value="resolved" {% if finding.status == 'resolved' %}selected{% endif %}>resolved</option>
-                        <option value="risk_accepted" {% if finding.status == 'risk_accepted' %}selected{% endif %}>risk_accepted</option>
-                        <option value="false_positive" {% if finding.status == 'false_positive' %}selected{% endif %}>false_positive</option>
-                      </select>
-                    </label>
-                    <button type="submit">Save</button>
-                  </form>
-                  {% if finding.description %}
-                    <div class="muted">{{ finding.description }}</div>
-                  {% endif %}
-                </div>
+    {% if error_message %}
+      <section class="panel">
+        <h2>Scan Error</h2>
+        <p class="sev-critical">{{ error_message }}</p>
+      </section>
+    {% endif %}
+
+    <section class="grid">
+      <article class="sev-card"><div class="label">Critical</div><div class="value sev-critical">{{ counts.critical }}</div></article>
+      <article class="sev-card"><div class="label">High</div><div class="value sev-high">{{ counts.high }}</div></article>
+      <article class="sev-card"><div class="label">Medium</div><div class="value sev-medium">{{ counts.medium }}</div></article>
+      <article class="sev-card"><div class="label">Low</div><div class="value sev-low">{{ counts.low }}</div></article>
+      <article class="sev-card"><div class="label">Unknown</div><div class="value sev-unknown">{{ counts.unknown }}</div></article>
+    </section>
+
+    {% if finding_counts_by_status %}
+      <section class="panel">
+        <h2>Finding Lifecycle Status</h2>
+        <div class="status-table-wrap">
+          <table>
+            <thead><tr><th>Status</th><th>Count</th></tr></thead>
+            <tbody>
+              {% for key, value in finding_counts_by_status.items() %}
+                <tr>
+                  <td>{{ key }}</td>
+                  <td>{{ value }}</td>
+                </tr>
               {% endfor %}
-            </td>
-          </tr>
-          {% endif %}
-          {% endfor %}
-        </tbody>
-      </table>
-    {% endfor %}
-  {% else %}
-    <p>No hosts discovered.</p>
-  {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    {% endif %}
+
+    {% if status in ["queued", "running"] %}
+      <section class="panel">
+        <p class="muted">Scan is still in progress. This page auto-refreshes every 5 seconds.</p>
+      </section>
+      <script>
+        setTimeout(function () {
+          window.location.reload();
+        }, 5000);
+      </script>
+    {% endif %}
+
+    {% if hosts %}
+      {% for host in hosts %}
+        <section class="panel">
+          <h2 class="host-title">Host: {{ host.ip }} {% if host.hostname %}({{ host.hostname }}){% endif %}</h2>
+          <p class="muted">
+            Critical {{ host.counts.critical }} |
+            High {{ host.counts.high }} |
+            Medium {{ host.counts.medium }} |
+            Low {{ host.counts.low }} |
+            Unknown {{ host.counts.unknown }}
+          </p>
+
+          <div class="service-table-wrap">
+            <table>
+              <thead><tr><th>Port</th><th>Protocol</th><th>State</th><th>Service</th><th>Product</th><th>Version</th><th>Severity</th></tr></thead>
+              <tbody>
+                {% for svc in host.services %}
+                <tr>
+                  <td>{{ svc.port }}</td>
+                  <td>{{ svc.protocol }}</td>
+                  <td>{{ svc.state }}</td>
+                  <td>{{ svc.service }}</td>
+                  <td>{{ svc.product or "" }}</td>
+                  <td>{{ svc.version or "" }}</td>
+                  <td class="sev-{{ svc.severity }}">{{ svc.severity }}</td>
+                </tr>
+                {% if svc.findings %}
+                <tr>
+                  <td colspan="7">
+                    {% for finding in svc.findings %}
+                      <div class="finding-card">
+                        <div class="finding-top">
+                          <strong>{{ finding.cve_id }}</strong>
+                          <span class="chip">CVSS {{ finding.cvss_score if finding.cvss_score is not none else "N/A" }}</span>
+                          <span class="chip">{{ finding.severity }}</span>
+                          <span class="chip">{{ finding.status }}</span>
+                          <span class="chip">{{ finding.source }}</span>
+                        </div>
+                        <form action="{{ url_for('main.update_finding_status', finding_id=finding.id) }}" method="post">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                          <label>
+                            Update status
+                            <select name="status">
+                              <option value="new" {% if finding.status == 'new' %}selected{% endif %}>new</option>
+                              <option value="triaged" {% if finding.status == 'triaged' %}selected{% endif %}>triaged</option>
+                              <option value="in_progress" {% if finding.status == 'in_progress' %}selected{% endif %}>in_progress</option>
+                              <option value="resolved" {% if finding.status == 'resolved' %}selected{% endif %}>resolved</option>
+                              <option value="risk_accepted" {% if finding.status == 'risk_accepted' %}selected{% endif %}>risk_accepted</option>
+                              <option value="false_positive" {% if finding.status == 'false_positive' %}selected{% endif %}>false_positive</option>
+                            </select>
+                          </label>
+                          <button type="submit">Save</button>
+                        </form>
+                        {% if finding.description %}
+                          <p class="muted">{{ finding.description }}</p>
+                        {% endif %}
+                      </div>
+                    {% endfor %}
+                  </td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      {% endfor %}
+    {% else %}
+      <section class="panel">
+        <p>No hosts discovered.</p>
+      </section>
+    {% endif %}
+  </div>
 </body>
 </html>

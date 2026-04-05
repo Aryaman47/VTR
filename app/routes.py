@@ -1,14 +1,14 @@
-from flask import Blueprint, request, redirect, url_for, render_template, current_app, flash
+from functools import wraps
+import hmac
+from flask import Blueprint, request, redirect, url_for, render_template, current_app, flash, session
 from app import db
 from app.models import Scan, Host, Service, VulnerabilityFinding
-from app.scanner.nmap_parser import run_nmap_and_get_xml, parse_nmap_xml
-from app.vuln_enrichment import find_cves_for_service
+from app.scan_queue import enqueue_scan_job
 from datetime import datetime
 from ipaddress import ip_address, ip_network
 import threading
 import time
 import re
-import os
 
 main = Blueprint("main", __name__)
 
@@ -124,118 +124,102 @@ def _severity_from_score(score):
     return "low"
 
 
-def _run_scan_job(app, scan_id, target):
-    xml_path = None
-    with app.app_context():
-        scan = Scan.query.get(scan_id)
-        if not scan:
-            return
+def _is_authenticated():
+    return bool(session.get("authenticated"))
 
-        scan.raw_xml = "STATUS:RUNNING"
-        db.session.add(scan)
-        db.session.commit()
 
-        try:
-            xml_path, xml_text = run_nmap_and_get_xml(target, extra_args=None, timeout=300)
+def _validate_csrf_or_redirect(fallback_endpoint, **fallback_values):
+    expected = session.get("csrf_token")
+    supplied = request.form.get("csrf_token")
 
-            scan.raw_xml = xml_text
-            scan.finished_at = datetime.utcnow()
-            db.session.add(scan)
-            db.session.commit()
+    if not expected or not supplied or not hmac.compare_digest(expected, supplied):
+        flash("Invalid CSRF token", "danger")
+        return redirect(url_for(fallback_endpoint, **fallback_values))
+    return None
 
-            parsed = parse_nmap_xml(xml_text)
-            cve_cache = {}
-            cve_enabled = app.config.get("CVE_ENRICHMENT_ENABLED", True)
-            nvd_timeout = app.config.get("NVD_API_TIMEOUT_SECONDS", 10)
-            nvd_results = app.config.get("NVD_RESULTS_PER_QUERY", 5)
-            nvd_max_queries = app.config.get("NVD_MAX_QUERIES_PER_SERVICE", 3)
-            nvd_api_key = app.config.get("NVD_API_KEY")
 
-            for h in parsed:
-                host = Host(scan_id=scan.id, ip=h.get("ip"), hostname=h.get("hostname"))
-                db.session.add(host)
-                db.session.flush()
+def login_required(view_func):
+    @wraps(view_func)
+    def wrapper(*args, **kwargs):
+        if _is_authenticated():
+            return view_func(*args, **kwargs)
+        flash("Please sign in to continue", "danger")
+        return redirect(url_for("main.login", next=request.path))
 
-                for svc in h.get("services", []):
-                    service = Service(
-                        host_id=host.id,
-                        port=svc.get("port") or 0,
-                        protocol=svc.get("protocol") or "",
-                        state=svc.get("state"),
-                        service_name=svc.get("service_name"),
-                        product=svc.get("product"),
-                        version=svc.get("version")
-                    )
-                    db.session.add(service)
-                    db.session.flush()
+    return wrapper
 
-                    if not cve_enabled:
-                        continue
 
-                    service_fingerprint = "|".join(
-                        [
-                            (svc.get("service_name") or "").strip().lower(),
-                            (svc.get("product") or "").strip().lower(),
-                            (svc.get("version") or "").strip().lower(),
-                        ]
-                    )
+@main.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "GET":
+        if _is_authenticated():
+            return redirect(url_for("main.home"))
+        return render_template("login.html")
 
-                    if service_fingerprint not in cve_cache:
-                        cve_cache[service_fingerprint] = find_cves_for_service(
-                            service_name=svc.get("service_name"),
-                            product=svc.get("product"),
-                            version=svc.get("version"),
-                            timeout=nvd_timeout,
-                            results_per_query=nvd_results,
-                            max_queries=nvd_max_queries,
-                            api_key=nvd_api_key,
-                        )
+    csrf_redirect = _validate_csrf_or_redirect("main.login")
+    if csrf_redirect:
+        return csrf_redirect
 
-                    findings = cve_cache.get(service_fingerprint, [])
-                    for finding in findings:
-                        vf = VulnerabilityFinding(
-                            scan_id=scan.id,
-                            host_id=host.id,
-                            service_id=service.id,
-                            cve_id=finding.get("cve_id") or "UNKNOWN",
-                            description=finding.get("description"),
-                            cvss_score=finding.get("cvss_score"),
-                            severity=finding.get("severity") or "unknown",
-                            source=finding.get("source") or "nvd",
-                            status="new",
-                            first_seen_at=datetime.utcnow(),
-                            last_seen_at=datetime.utcnow(),
-                        )
-                        db.session.add(vf)
+    username = (request.form.get("username") or "").strip()
+    password = request.form.get("password") or ""
 
-            db.session.commit()
+    expected_username = current_app.config.get("VTR_ADMIN_USERNAME", "admin")
+    expected_password = current_app.config.get("VTR_ADMIN_PASSWORD", "admin123")
 
-        except Exception as e:
-            scan = Scan.query.get(scan_id)
-            if scan:
-                scan.finished_at = datetime.utcnow()
-                scan.raw_xml = (scan.raw_xml or "") + f"\n\nERROR: {str(e)}"
-                db.session.add(scan)
-                db.session.commit()
-            app.logger.exception("Scan failed for target %s", target)
+    if hmac.compare_digest(username, expected_username) and hmac.compare_digest(password, expected_password):
+        session["authenticated"] = True
+        flash("Signed in successfully", "success")
+        next_path = request.args.get("next") or request.form.get("next")
+        if not next_path or not next_path.startswith("/"):
+            next_path = url_for("main.home")
+        return redirect(next_path)
 
-        finally:
-            try:
-                if xml_path and os.path.exists(xml_path):
-                    os.remove(xml_path)
-            except Exception:
-                app.logger.warning("Failed to remove temporary nmap XML file: %s", xml_path)
+    flash("Invalid username or password", "danger")
+    return redirect(url_for("main.login"))
+
+
+@main.route("/logout", methods=["POST"])
+@login_required
+def logout():
+    csrf_redirect = _validate_csrf_or_redirect("main.home")
+    if csrf_redirect:
+        return csrf_redirect
+
+    session.pop("authenticated", None)
+    flash("Signed out", "success")
+    return redirect(url_for("main.login"))
 
 @main.route("/", methods=["GET", "POST"])
+@login_required
 def home():
     """
     Home page acts as the scanning UI:
     - GET: show scan form + recent scans
-    - POST: run a scan (synchronously), store results, redirect to report
+    - POST: queue a scan, store status, redirect to report
     """
     if request.method == "GET":
         # fetch recent scans (latest 10)
         recent = Scan.query.order_by(Scan.started_at.desc()).limit(10).all()
+        requested_scan_id = request.args.get("scan_id", type=int)
+
+        preferred_scan_id = None
+        if requested_scan_id is not None:
+            requested_scan = Scan.query.get(requested_scan_id)
+            if requested_scan is not None:
+                preferred_scan_id = requested_scan.id
+
+        if preferred_scan_id is None:
+            for s in recent:
+                if _scan_status(s) in {"queued", "running"}:
+                    preferred_scan_id = s.id
+                    break
+
+        if preferred_scan_id is None:
+            for s in recent:
+                if _scan_status(s) == "completed":
+                    preferred_scan_id = s.id
+                    break
+
         recent_list = [
             {
                 "id": s.id,
@@ -246,9 +230,17 @@ def home():
             }
             for s in recent
         ]
-        return render_template("home.html", recent_scans=recent_list)
+        return render_template(
+            "home.html",
+            recent_scans=recent_list,
+            preferred_scan_id=preferred_scan_id,
+        )
 
     # POST -> trigger scan (form submission)
+    csrf_redirect = _validate_csrf_or_redirect("main.home")
+    if csrf_redirect:
+        return csrf_redirect
+
     client_id = request.headers.get("X-Forwarded-For", request.remote_addr or "unknown")
     if _rate_limited(client_id):
         current_app.logger.warning("Rate limit hit for client %s", client_id)
@@ -269,15 +261,19 @@ def home():
     db.session.add(scan)
     db.session.commit()
 
-    app_obj = current_app._get_current_object()
-    worker = threading.Thread(target=_run_scan_job, args=(app_obj, scan.id, target), daemon=True)
-    worker.start()
+    queue_result = enqueue_scan_job(scan.id, target, current_app._get_current_object())
+    if queue_result.get("backend") == "rq" and queue_result.get("job_id"):
+        scan.raw_xml = f"STATUS:QUEUED\nJOB:{queue_result['job_id']}"
+        db.session.add(scan)
+        db.session.commit()
+
     flash(f"Scan #{scan.id} queued for target {target}", "success")
 
     return redirect(url_for("main.report", scan_id=scan.id))
 
 
 @main.route("/report/<int:scan_id>")
+@login_required
 def report(scan_id):
     scan = Scan.query.get_or_404(scan_id)
     status = _scan_status(scan)
@@ -364,6 +360,7 @@ def report(scan_id):
 
 
 @main.route("/scan/<int:scan_id>/status")
+@login_required
 def scan_status(scan_id):
     scan = Scan.query.get_or_404(scan_id)
     return {
@@ -376,8 +373,13 @@ def scan_status(scan_id):
 
 
 @main.route("/finding/<int:finding_id>/status", methods=["POST"])
+@login_required
 def update_finding_status(finding_id):
     finding = VulnerabilityFinding.query.get_or_404(finding_id)
+    csrf_redirect = _validate_csrf_or_redirect("main.report", scan_id=finding.scan_id)
+    if csrf_redirect:
+        return csrf_redirect
+
     next_status = (request.form.get("status") or "").strip().lower()
 
     if next_status not in _FINDING_STATUSES:

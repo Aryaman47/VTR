@@ -17,6 +17,12 @@ class BaseConfig:
     NVD_API_TIMEOUT_SECONDS = int(os.environ.get("NVD_API_TIMEOUT_SECONDS", "10"))
     NVD_RESULTS_PER_QUERY = int(os.environ.get("NVD_RESULTS_PER_QUERY", "5"))
     NVD_MAX_QUERIES_PER_SERVICE = int(os.environ.get("NVD_MAX_QUERIES_PER_SERVICE", "3"))
+    SCAN_QUEUE_BACKEND = os.environ.get("SCAN_QUEUE_BACKEND", "thread")
+    REDIS_URL = os.environ.get("REDIS_URL")
+    RQ_QUEUE_NAME = os.environ.get("RQ_QUEUE_NAME", "vtr_scans")
+    SCAN_JOB_TIMEOUT_SECONDS = int(os.environ.get("SCAN_JOB_TIMEOUT_SECONDS", "900"))
+    VTR_ADMIN_USERNAME = os.environ.get("VTR_ADMIN_USERNAME", "admin")
+    VTR_ADMIN_PASSWORD = os.environ.get("VTR_ADMIN_PASSWORD", "admin123")
 
 
 class DevelopmentConfig(BaseConfig):
@@ -35,7 +41,6 @@ class ProductionConfig(BaseConfig):
     def validate(cls):
         if not cls.SQLALCHEMY_DATABASE_URI:
             raise RuntimeError("DATABASE_URL must be set for ProductionConfig")
-
 
 class TestingConfig(BaseConfig):
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"

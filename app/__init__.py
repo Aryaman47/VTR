@@ -1,6 +1,7 @@
 import os
+import secrets
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
@@ -30,5 +31,13 @@ def create_app():
     @app.get("/health")
     def health_check():
         return jsonify({"status": "ok"})
+
+    @app.context_processor
+    def inject_csrf_token():
+        token = session.get("csrf_token")
+        if not token:
+            token = secrets.token_urlsafe(32)
+            session["csrf_token"] = token
+        return {"csrf_token": token}
 
     return app
